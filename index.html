@@ -1,0 +1,581 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Mid Valley Makan Roulette</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: header on top, then two columns on desktop (sticky wheel + result on the left, filters + full list on the right). One column on phones, in the same order. */
+:root {
+  --bg: #EDF0EB;
+  --surface: #F8FAF6;
+  --fg: #14201B;
+  --muted: #55645C;
+  --line: #D3DAD2;
+  --accent: #0F5C47;
+  --accent-fg: #F4FAF6;
+  --pointer: #E5A21B;
+  --halal-fg: #0F6B3E; --halal-bg: #D6EEDF;
+  --nopork-fg: #2A5694; --nopork-bg: #DDE7F5;
+  --non-fg: #9A3324; --non-bg: #F6DDD7;
+  --unk-fg: #5E6B63; --unk-bg: #E1E6DF;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "DM Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1512; --surface: #151F1A; --fg: #E6EEE8; --muted: #93A39A; --line: #26332C;
+    --accent: #5FC9A0; --accent-fg: #07140E; --pointer: #F0B53A;
+    --halal-fg: #7FD6A4; --halal-bg: #17382A;
+    --nopork-fg: #9CBEF0; --nopork-bg: #1B2C48;
+    --non-fg: #F0A596; --non-bg: #432019;
+    --unk-fg: #A5B3AA; --unk-bg: #222D27;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1512; --surface: #151F1A; --fg: #E6EEE8; --muted: #93A39A; --line: #26332C;
+  --accent: #5FC9A0; --accent-fg: #07140E; --pointer: #F0B53A;
+  --halal-fg: #7FD6A4; --halal-bg: #17382A;
+  --nopork-fg: #9CBEF0; --nopork-bg: #1B2C48;
+  --non-fg: #F0A596; --non-bg: #432019;
+  --unk-fg: #A5B3AA; --unk-bg: #222D27;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.5 var(--body);
+  padding-block: 28px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 32px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+header { display: grid; gap: 6px; }
+.eyebrow { font: 500 11px/1.3 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+h1 { margin: 0; font: 700 clamp(34px, 7vw, 60px)/1 var(--display); letter-spacing: -.02em; text-wrap: balance; }
+.lede { margin: 4px 0 0; color: var(--muted); max-width: 52ch; }
+
+.shell { display: grid; gap: 36px 56px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 900px) {
+  .shell { grid-template-columns: minmax(340px, 500px) minmax(0, 1fr); align-items: start; }
+  .stage { position: sticky; top: 24px; }
+}
+.stage { display: grid; gap: 18px; min-width: 0; }
+.side { display: grid; gap: 30px; min-width: 0; }
+
+/* Wheel */
+.wheel-box { position: relative; width: 100%; max-width: 500px; aspect-ratio: 1; margin: 14px auto 0; }
+#wheel { width: 100%; height: 100%; display: block; }
+.pointer {
+  position: absolute; top: -12px; left: 50%; transform: translateX(-50%); z-index: 2;
+  width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent;
+  border-top: 28px solid var(--pointer);
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,.35));
+}
+.hub {
+  position: absolute; inset: 0; margin: auto; width: 24%; aspect-ratio: 1; border-radius: 50%;
+  background: var(--surface); border: 3px solid var(--line);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+  pointer-events: none;
+}
+.hub b { font: 700 clamp(20px, 5vw, 30px)/1 var(--display); }
+.hub span { font: 500 9px/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-top: 3px; }
+
+.readout {
+  min-height: 2.4em; display: flex; align-items: center; justify-content: center; gap: 10px; text-align: center;
+  font: 500 clamp(18px, 4vw, 22px)/1.2 var(--display); text-wrap: balance;
+}
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c, var(--muted)); flex: none; }
+
+.btn {
+  font: inherit; cursor: pointer; border-radius: 12px; padding: 11px 16px; min-height: 44px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--fg);
+  display: inline-flex; align-items: center; justify-content: center; text-decoration: none;
+}
+.btn.primary {
+  width: 100%; background: var(--accent); color: var(--accent-fg); border-color: var(--accent);
+  font: 700 18px/1 var(--display); letter-spacing: .01em; padding: 16px 20px;
+}
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn:focus-visible, .chip:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid var(--pointer); outline-offset: 2px; }
+
+/* Result */
+.result {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 20px;
+  display: grid; gap: 10px; min-height: 120px; align-content: start;
+}
+.result .hint { margin: 0; color: var(--muted); }
+.r-top { display: flex; align-items: center; gap: 8px; }
+.r-name { margin: 0; font: 700 clamp(26px, 5vw, 34px)/1.05 var(--display); letter-spacing: -.01em; text-wrap: balance; overflow-wrap: anywhere; }
+.r-sub { margin: 0; color: var(--muted); }
+.r-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.r-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.tag { font: 500 12px/1 var(--mono); padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line); }
+.tag i { font-style: normal; color: var(--muted); }
+.badge { font: 500 12px/1 var(--mono); padding: 7px 10px; border-radius: 8px; }
+.badge.halal { color: var(--halal-fg); background: var(--halal-bg); }
+.badge.nopork { color: var(--nopork-fg); background: var(--nopork-bg); }
+.badge.non { color: var(--non-fg); background: var(--non-bg); }
+.badge.unk { color: var(--unk-fg); background: var(--unk-bg); }
+@media (prefers-reduced-motion: no-preference) {
+  .result.fresh { animation: rise .35s ease-out; }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+}
+
+/* Filters */
+fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 26px; }
+.group { display: grid; gap: 10px; min-width: 0; }
+.group-h { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.group-h h2 { margin: 0; font: 500 11px/1.3 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  font: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 13px; min-height: 38px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--fg);
+}
+.chip .n { font: 400 11px/1 var(--mono); opacity: .65; }
+.chip b { font: 500 13px/1 var(--mono); }
+.chip small { font-size: 12px; opacity: .75; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.chip[aria-pressed="true"] .dot { box-shadow: 0 0 0 2px var(--accent-fg); }
+.chip:disabled { opacity: .38; cursor: not-allowed; }
+.linkbtn { font: 500 12px/1 var(--mono); background: none; border: 0; color: var(--accent); cursor: pointer; padding: 6px 0; text-decoration: underline; text-underline-offset: 3px; }
+.pool-note { margin: 0; font: 400 12px/1.4 var(--mono); color: var(--muted); }
+
+/* List */
+details { border-top: 1px solid var(--line); }
+summary { cursor: pointer; padding: 14px 0; font: 500 11px/1.3 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.list { list-style: none; margin: 0; padding: 0; }
+.list li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+.list .nm { font-weight: 600; overflow-wrap: anywhere; }
+.list .st { color: var(--muted); font-size: 13px; }
+.list .rt { display: flex; align-items: center; gap: 8px; font: 500 12px/1 var(--mono); }
+.empty { color: var(--muted); padding: 10px 0; margin: 0; }
+
+footer p { margin: 0; max-width: 78ch; color: var(--muted); font-size: 13px; }
+footer a { color: var(--accent); }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Mid Valley City · Kuala Lumpur</div>
+    <h1>Makan Roulette</h1>
+    <p class="lede">Mid Valley Megamall and The Gardens Mall, 58 places to eat or drink on one wheel. Filter it down, then spin.</p>
+  </header>
+
+  <div class="shell">
+    <section class="stage" aria-label="Roulette">
+      <div class="wheel-box">
+        <div class="pointer" aria-hidden="true"></div>
+        <canvas id="wheel" aria-hidden="true"></canvas>
+        <div class="hub" aria-hidden="true"><b id="hub-n">58</b><span>on the wheel</span></div>
+      </div>
+      <div class="readout" id="readout" aria-hidden="true"></div>
+      <button class="btn primary" id="spin" type="button">Spin the wheel</button>
+      <div class="result" id="result" aria-live="polite">
+        <p class="hint">Your pick shows up here, with price band, halal status and a link to its listing.</p>
+      </div>
+    </section>
+
+    <div class="side">
+      <fieldset id="filters">
+        <legend class="sr">Filters</legend>
+        <div class="group">
+          <div class="group-h"><h2>Cuisine</h2><button class="linkbtn" id="reset" type="button">Reset all</button></div>
+          <div class="chips" id="f-cu"></div>
+        </div>
+        <div class="group">
+          <div class="group-h"><h2>Budget per person</h2></div>
+          <div class="chips" id="f-bu"></div>
+        </div>
+        <div class="group">
+          <div class="group-h"><h2>Halal status</h2></div>
+          <div class="chips" id="f-ha"></div>
+        </div>
+        <div class="group">
+          <div class="group-h"><h2>Mall</h2></div>
+          <div class="chips" id="f-ma"></div>
+        </div>
+        <p class="pool-note" id="pool-note"></p>
+      </fieldset>
+
+      <details id="listbox">
+        <summary id="list-sum">Everything on the wheel</summary>
+        <ul class="list" id="list"></ul>
+      </details>
+    </div>
+  </div>
+
+  <footer>
+    <p>Places come from the <a href="https://www.shopklcc.com/mid-valley-megamall/shops/food?search=mid+valley" target="_blank" rel="noopener">Mid Valley Megamall</a> and <a href="https://www.shopklcc.com/the-gardens-mall/shops/food?search=mid+valley" target="_blank" rel="noopener">The Gardens Mall</a> food directories on Shop KLCC, read on 16 Oct 2026. The directory has no prices or halal data. Budget bands are my estimates per person. Halal means JAKIM-certified or listed as halal in public guides. No pork means pork-free or no meat on the menu, without certification. Unverified means I could not confirm, so look for the halal logo at the door. Left off the wheel: five herbal, fruit and coffee-machine shops that are not meals, one closed outlet and one restaurant that has not opened yet.</p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var TAU = Math.PI * 2;
+  var $ = function (s) { return document.querySelector(s); };
+  var esc = function (s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  };
+
+  var CUIS = {
+    jp: ["Japanese", "#B5412C"],
+    cn: ["Chinese & Taiwanese", "#A8700E"],
+    my: ["Malaysian & Nyonya", "#2F7D4A"],
+    th: ["Thai", "#1B8484"],
+    we: ["Western & grill", "#3A5FA6"],
+    ff: ["Fast food & pizza", "#7048A0"],
+    cf: ["Café & coffee", "#7A5335"],
+    tj: ["Tea & juice", "#6B8A1E"],
+    bd: ["Bakery & dessert", "#B8457A"],
+    sn: ["Snacks", "#596673"]
+  };
+  var BUD = { 1: ["$", "Under RM20"], 2: ["$$", "RM20–40"], 3: ["$$$", "RM40–80"], 4: ["$$$$", "RM80+"] };
+  var HAL = { halal: "Halal", nopork: "No pork", non: "Non-halal", unk: "Unverified" };
+  var MALL = { MV: "Mid Valley Megamall", TG: "The Gardens Mall" };
+  var MALLS = { MV: "Mid Valley", TG: "The Gardens" };
+  var HOPT = [["any", "Any"], ["halal", "Halal"], ["ok", "Halal or no pork"], ["non", "Non-halal"]];
+  var MOPT = [["any", "Both malls"], ["MV", "Mid Valley"], ["TG", "The Gardens"]];
+
+  // name, cuisine, style, mall, budget band, halal, listing slug, location
+  var RAW = [
+    ["Kiku-Zakura", "jp", "Japanese set meals and à la carte", "MV", 3, "unk", "kiku-zakura-japanese-cuisine"],
+    ["Sou Omakase Dining", "jp", "Omakase", "TG", 4, "non", "sou-omakase-dining-the-gardens-mall-mid-valley", "G247, Ground Floor"],
+    ["Rakuzen", "jp", "Japanese fine dining", "TG", 3, "unk", "rakuzen-the-gardens-mall", "3rd Floor"],
+    ["Genki Sushi", "jp", "Sushi", "TG", 2, "unk", "genki-sushi-the-gardens-mall"],
+    ["Sushi Jiro", "jp", "Conveyor-belt sushi", "TG", 2, "unk", "sushi-jiro-the-gardens-mall", "Lower Ground"],
+    ["Wagyu More", "jp", "Wagyu shabu shabu", "TG", 3, "unk", "wagyu-more-malaysia-the-gardens-mall"],
+    ["Menya Appare", "jp", "Ramen", "TG", 2, "unk", "ramen-restaurantsmenya-appare-mid-valley", "Inside Isetan"],
+
+    ["Dragon-i", "cn", "Shanghainese", "MV", 3, "non", "dragon-i"],
+    ["Putien", "cn", "Fujian", "TG", 3, "non", "putien-the-gardens"],
+    ["The Han Room 满漢城酒家", "cn", "Chinese fine dining", "TG", 3, "unk", "the-han-room", "3rd Floor"],
+    ["Fong Lye Fusion", "cn", "Taiwanese", "TG", 2, "unk", "fong-lye-fusion"],
+    ["Kim Gary Restaurant", "cn", "Hong Kong cafe-style", "MV", 2, "unk", "kim-gary-restaurant-mid-valley-megamall"],
+    ["I Love Yoo!", "cn", "Chinese comfort food", "TG", 1, "unk", "i-love-yoo-the-gardens-mall", "LG-K16"],
+
+    ["Madam Kwan's", "my", "Malaysian classics", "MV", 2, "halal", "madam-kwans-mid-valley-megamall"],
+    ["Nyonya Colors", "my", "Peranakan", "TG", 2, "unk", "nyonya-colors-the-gardens-mall", "Lower Ground"],
+    ["Hock Kee Heritage 福气安康", "my", "Nanyang kopitiam", "TG", 2, "unk", "hock-kee-heritage-the-gardens-mall-mid-valley"],
+    ["Makan Place Medan Selera", "my", "Food court", "MV", 1, "unk", "makan-place-medan-selera", "Lower Ground"],
+    ["Pulau Ketam Yong Tau Foo", "my", "Self-service yong tau foo", "TG", 1, "unk", "pulau-ketam-yong-tau-foo", "Lower Ground"],
+
+    ["Amarin Heavenly Thai", "th", "Speciality Thai", "MV", 2, "halal", "amarin"],
+
+    ["Chili's Grill & Bar", "we", "American", "MV", 3, "halal", "chilis-mid-valley"],
+    ["Nando's", "we", "Afro-Portuguese chicken", "MV", 2, "halal", "nandos-mid-valley-megamall"],
+    ["Killer Gourmet Burgers (KGB)", "we", "Burgers", "TG", 2, "unk", "killer-gourmet-burgers-kgb-the-gardens-mall", "Lower Ground"],
+    ["Snitch By The Thieves", "we", "Modern Western and local", "TG", 3, "nopork", "snitch-by-the-thieves"],
+    ["Jin Gastrobar", "we", "Gastrobar", "TG", 3, "non", "jin-gastrobar-the-gardens-mall", "FF-201, 4th Floor"],
+    ["Sage Restaurant & Wine Bar", "we", "Fine dining", "TG", 4, "non", "sage-restaurant-wine-bar", "Level 6, The Gardens Residences"],
+
+    ["KFC", "ff", "Fried chicken", "MV", 1, "halal", "kfc-mid-valley-megamall"],
+    ["Burger King", "ff", "Burgers", "MV", 1, "halal", "burger-king-mid-valley-megamall", "G-001, Ground Floor"],
+    ["Carl's Jr.", "ff", "Burgers", "MV", 2, "halal", "carls-jr-mid-valley-megamall"],
+    ["Pizza Hut Restaurant", "ff", "Pizza", "MV", 2, "halal", "pizza-hut-restaurant-mid-valley-megamall"],
+
+    ["The Coffee Bean & Tea Leaf", "cf", "Café", "MV", 2, "halal", "the-coffee-bean-tea-leaf-522619"],
+    ["San Francisco Coffee", "cf", "Coffee", "TG", 1, "nopork", "san-francisco-coffee-the-gardens-mall", "LG-293"],
+    ["Eight Ounce Coffee Co.", "cf", "Coffee", "TG", 1, "nopork", "eight-ounce-coffee-co-the-gardens-mall"],
+    ["Yew Yew Coffee", "cf", "Coffee", "TG", 1, "nopork", "yew-yew-coffee-midvalley", "LG-231A"],
+    ["Secret Recipe", "cf", "Cakes and café meals", "MV", 2, "halal", "secret-recipe-mid-valley-megamall"],
+
+    ["Tealive", "tj", "Bubble tea", "MV", 1, "halal", "tealive"],
+    ["Tealive Plus", "tj", "Bubble tea", "TG", 1, "halal", "tealive-plus-the-gardens-mall"],
+    ["Koi Thé", "tj", "Bubble tea", "TG", 1, "nopork", "koi-the-the-gardens-mall"],
+    ["Machi Machi", "tj", "Taiwanese milk tea", "TG", 1, "nopork", "machi-machi-the-gardens-mall"],
+    ["Juice Works", "tj", "Fresh juice", "MV", 1, "nopork", "juice-works-mid-valley-megamall", "South Court"],
+    ["Boost Juice", "tj", "Juice and smoothies", "MV", 1, "halal", "boost-juice-mid-valley-megamall"],
+    ["Koong Woh Tong 恭和堂", "tj", "Herbal tea and jelly", "MV", 1, "nopork", "koong-woh-tong-mid-valley-megamall", "LG-069"],
+
+    ["Komugi", "bd", "Japanese bakery", "MV", 1, "unk", "komugi-mid-valley-megamall"],
+    ["La Boheme", "bd", "Patisserie", "MV", 1, "unk", "la-boheme-mid-valley"],
+    ["Lavender Bakery", "bd", "Bakery and bistro", "MV", 2, "unk", "lavender-bakery-mid-valley-megamall"],
+    ["Beard Papa's", "bd", "Cream puffs", "MV", 1, "halal", "beard-papas-mid-valley-megamall"],
+    ["Baskin-Robbins", "bd", "Ice cream", "MV", 1, "halal", "baskin-robbins-mid-valley-megamall"],
+    ["Häagen-Dazs", "bd", "Ice cream", "MV", 2, "halal", "haagen-dazs-522720"],
+    ["Inside Scoop", "bd", "Artisan ice cream", "TG", 1, "nopork", "inside-scoop-the-gardens-mall"],
+    ["Yomie's Rice X Yogurt", "bd", "Frozen yogurt", "TG", 1, "nopork", "yomies-rice-x-yogurt-the-gardens-mall"],
+    ["llaollao", "bd", "Frozen yogurt", "TG", 1, "nopork", "llaollao-the-gardens-mall"],
+    ["Nadeje", "bd", "Mille crêpes and cakes", "TG", 2, "nopork", "nadeje-the-gardens-mall"],
+    ["Good Chen", "bd", "Cookies", "MV", 1, "nopork", "good-chen"],
+
+    ["Garrett Popcorn Shops", "sn", "Popcorn", "MV", 1, "nopork", "garrett-popcorn-shops-mid-valley-megamall"],
+    ["Auntie Anne's", "sn", "Pretzels", "MV", 1, "halal", "auntie-annes-mid-valley-megamall"],
+    ["Homi Chicken Curry Puff", "sn", "Curry puffs", "MV", 1, "nopork", "homi-chicken-curry-puff-mid-valley-megamall"],
+    ["Hot & Roll", "sn", "Toasted crêpes and light bites", "MV", 1, "unk", "hot-roll-mid-valley-lg", "Lower Ground"],
+    ["Mou Tak Ding", "sn", "Heritage snack kiosk", "MV", 1, "unk", "mou-tak-ding", "Ground Floor"],
+    ["Mahnaz Food", "sn", "Middle Eastern snacks", "MV", 1, "nopork", "mahnaz-food-mid-valley-healthy-snacks"]
+  ];
+  var order = Object.keys(CUIS);
+  var V = RAW.map(function (r) {
+    return { n: r[0], c: r[1], s: r[2], m: r[3], p: r[4], h: r[5], u: "https://www.shopklcc.com/shop/" + r[6], w: r[7] || "" };
+  }).sort(function (a, b) {
+    return order.indexOf(a.c) - order.indexOf(b.c) || a.n.localeCompare(b.n);
+  });
+  V.forEach(function (v, i) { v.id = i; });
+
+  var st = { cu: new Set(), bu: new Set(), ha: "any", ma: "any", skip: new Set() };
+  var pool = [], theta = 0, hi = -1, spinning = false, lastIdx = -1;
+
+  function haOk(v, o) {
+    if (o === "any") return true;
+    if (o === "halal") return v.h === "halal";
+    if (o === "ok") return v.h === "halal" || v.h === "nopork";
+    return v.h === "non";
+  }
+  function pass(v, ign) {
+    if (st.skip.has(v.id)) return false;
+    if (ign !== "cu" && st.cu.size && !st.cu.has(v.c)) return false;
+    if (ign !== "bu" && st.bu.size && !st.bu.has(v.p)) return false;
+    if (ign !== "ha" && !haOk(v, st.ha)) return false;
+    if (ign !== "ma" && st.ma !== "any" && v.m !== st.ma) return false;
+    return true;
+  }
+
+  /* ---------- filter UI ---------- */
+  function build() {
+    $("#f-cu").innerHTML = order.map(function (k) {
+      return '<button type="button" class="chip" id="cu-' + k + '" data-dim="cu" data-k="' + k + '" aria-pressed="false" style="--c:' + CUIS[k][1] + '"><span class="dot"></span>' + esc(CUIS[k][0]) + ' <span class="n"></span></button>';
+    }).join("");
+    $("#f-bu").innerHTML = [1, 2, 3, 4].map(function (p) {
+      return '<button type="button" class="chip" id="bu-' + p + '" data-dim="bu" data-k="' + p + '" aria-pressed="false"><b>' + BUD[p][0] + '</b><small>' + BUD[p][1] + '</small> <span class="n"></span></button>';
+    }).join("");
+    $("#f-ha").innerHTML = HOPT.map(function (o) {
+      return '<button type="button" class="chip" id="ha-' + o[0] + '" data-dim="ha" data-k="' + o[0] + '" aria-pressed="false">' + o[1] + ' <span class="n"></span></button>';
+    }).join("");
+    $("#f-ma").innerHTML = MOPT.map(function (o) {
+      return '<button type="button" class="chip" id="ma-' + o[0] + '" data-dim="ma" data-k="' + o[0] + '" aria-pressed="false">' + o[1] + ' <span class="n"></span></button>';
+    }).join("");
+  }
+  function setChip(id, pressed, count, disable) {
+    var el = document.getElementById(id);
+    el.setAttribute("aria-pressed", pressed ? "true" : "false");
+    el.querySelector(".n").textContent = count;
+    el.disabled = !!disable;
+  }
+  function updateFilters() {
+    order.forEach(function (k) {
+      var n = V.filter(function (v) { return pass(v, "cu") && v.c === k; }).length;
+      setChip("cu-" + k, st.cu.has(k), n, n === 0 && !st.cu.has(k));
+    });
+    [1, 2, 3, 4].forEach(function (p) {
+      var n = V.filter(function (v) { return pass(v, "bu") && v.p === p; }).length;
+      setChip("bu-" + p, st.bu.has(p), n, n === 0 && !st.bu.has(p));
+    });
+    HOPT.forEach(function (o) {
+      var n = V.filter(function (v) { return pass(v, "ha") && haOk(v, o[0]); }).length;
+      setChip("ha-" + o[0], st.ha === o[0], n, n === 0 && o[0] !== "any" && st.ha !== o[0]);
+    });
+    MOPT.forEach(function (o) {
+      var n = V.filter(function (v) { return pass(v, "ma") && (o[0] === "any" || v.m === o[0]); }).length;
+      setChip("ma-" + o[0], st.ma === o[0], n, n === 0 && o[0] !== "any" && st.ma !== o[0]);
+    });
+  }
+
+  /* ---------- wheel ---------- */
+  var cv = $("#wheel"), ctx = cv.getContext("2d"), W = 0, D = 1;
+  function fit() {
+    var r = cv.getBoundingClientRect();
+    if (!r.width) return;
+    D = Math.min(window.devicePixelRatio || 1, 2);
+    W = r.width;
+    cv.width = Math.round(W * D);
+    cv.height = Math.round(W * D);
+    draw();
+  }
+  function tok(name, fb) {
+    var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fb;
+  }
+  function idxAt(th) {
+    var n = pool.length, step = TAU / n;
+    var a = ((-th) % TAU + TAU) % TAU;
+    return Math.min(n - 1, Math.floor(a / step));
+  }
+  function draw() {
+    if (!W) return;
+    ctx.setTransform(D, 0, 0, D, 0, 0);
+    ctx.clearRect(0, 0, W, W);
+    var cx = W / 2, R = W / 2 - 6, n = pool.length;
+    var surface = tok("--surface", "#fff"), line = tok("--line", "#ccc"), muted = tok("--muted", "#666");
+    if (!n) {
+      ctx.beginPath(); ctx.arc(cx, cx, R, 0, TAU);
+      ctx.setLineDash([6, 6]); ctx.lineWidth = 2; ctx.strokeStyle = line; ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = muted; ctx.font = "500 16px 'Instrument Sans', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("No place matches these filters", cx, cx + R * 0.45);
+      return;
+    }
+    var step = TAU / n;
+    ctx.lineJoin = "round";
+    for (var i = 0; i < n; i++) {
+      var a0 = theta + i * step - Math.PI / 2;
+      ctx.globalAlpha = hi >= 0 && i !== hi ? 0.28 : 1;
+      ctx.beginPath();
+      if (n > 1) ctx.moveTo(cx, cx);
+      ctx.arc(cx, cx, R, a0, a0 + step);
+      ctx.closePath();
+      ctx.fillStyle = CUIS[pool[i].c][1];
+      ctx.fill();
+      ctx.lineWidth = n > 30 ? 1.5 : 2.5;
+      ctx.strokeStyle = surface;
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    if (n <= 18) {
+      var fs = Math.max(10, Math.min(16, 0.75 * R * step * 0.42));
+      ctx.font = "600 " + fs + "px 'Instrument Sans', sans-serif";
+      ctx.textAlign = "right"; ctx.textBaseline = "middle";
+      var maxW = R * 0.62;
+      for (var j = 0; j < n; j++) {
+        var mid = theta + (j + 0.5) * step - Math.PI / 2;
+        var t = pool[j].n;
+        while (ctx.measureText(t).width > maxW && t.length > 3) t = t.slice(0, -2);
+        if (t !== pool[j].n) t = t.trim() + "…";
+        ctx.save();
+        ctx.translate(cx, cx);
+        ctx.rotate(mid);
+        ctx.globalAlpha = hi >= 0 && j !== hi ? 0.45 : 1;
+        ctx.fillStyle = "#fff";
+        ctx.fillText(t, R - 16, 0);
+        ctx.restore();
+      }
+      ctx.globalAlpha = 1;
+    }
+    ctx.beginPath(); ctx.arc(cx, cx, R, 0, TAU);
+    ctx.lineWidth = 3; ctx.strokeStyle = line; ctx.stroke();
+  }
+
+  /* ---------- state refresh ---------- */
+  var R_EL = $("#result"), RO = $("#readout"), SPIN = $("#spin");
+  function hint() {
+    R_EL.innerHTML = '<p class="hint">Your pick shows up here, with price band, halal status and a link to its listing.</p>';
+    R_EL.classList.remove("fresh");
+  }
+  function readout(v) {
+    if (!v) { RO.innerHTML = ""; return; }
+    RO.innerHTML = '<span class="dot" style="--c:' + CUIS[v.c][1] + '"></span><span>' + esc(v.n) + "</span>";
+  }
+  function idleReadout() {
+    if (!pool.length) { RO.textContent = "Nothing matches. Loosen a filter."; return; }
+    RO.textContent = pool.length === 1 ? "One place left on the wheel" : pool.length + " places on the wheel";
+  }
+  function renderList() {
+    var ul = $("#list");
+    $("#list-sum").textContent = "Everything on the wheel (" + pool.length + ")";
+    if (!pool.length) { ul.innerHTML = '<li><p class="empty">Nothing to list yet.</p></li>'; return; }
+    ul.innerHTML = pool.map(function (v) {
+      return '<li><span class="dot" style="--c:' + CUIS[v.c][1] + '"></span><div><div class="nm">' + esc(v.n) + '</div><div class="st">' + esc(v.s) + " · " + MALLS[v.m] + '</div></div><div class="rt"><span>' + BUD[v.p][0] + '</span><span class="badge ' + v.h + '">' + HAL[v.h] + "</span></div></li>";
+    }).join("");
+  }
+  function refresh() {
+    pool = V.filter(function (v) { return pass(v); });
+    hi = -1; lastIdx = -1;
+    $("#hub-n").textContent = pool.length;
+    var note = pool.length + " of " + V.length + " places on the wheel";
+    if (st.skip.size) note += " · " + st.skip.size + " skipped";
+    $("#pool-note").textContent = note;
+    SPIN.disabled = !pool.length;
+    updateFilters();
+    hint();
+    idleReadout();
+    renderList();
+    draw();
+  }
+
+  /* ---------- result ---------- */
+  function showResult(v) {
+    R_EL.innerHTML =
+      '<div class="r-top"><span class="dot" style="--c:' + CUIS[v.c][1] + '"></span><span class="eyebrow">' + esc(CUIS[v.c][0]) + "</span></div>" +
+      '<h2 class="r-name">' + esc(v.n) + "</h2>" +
+      '<p class="r-sub">' + esc(v.s) + "</p>" +
+      '<div class="r-meta"><span class="tag">' + BUD[v.p][0] + " <i>" + BUD[v.p][1] + '</i></span><span class="badge ' + v.h + '">' + HAL[v.h] + '</span><span class="tag">' + esc(MALL[v.m]) + (v.w ? ", " + esc(v.w) : "") + "</span></div>" +
+      '<div class="r-actions"><a class="btn" href="' + v.u + '" target="_blank" rel="noopener">View listing ↗</a><button class="btn" id="skip" type="button" data-id="' + v.id + '">Skip this one</button></div>';
+    R_EL.classList.remove("fresh");
+    void R_EL.offsetWidth;
+    R_EL.classList.add("fresh");
+  }
+
+  /* ---------- spin ---------- */
+  function lock(on) {
+    spinning = on;
+    $("#filters").disabled = on;
+    SPIN.disabled = on || !pool.length;
+    $("#reset").disabled = on;
+  }
+  function spin() {
+    if (spinning || !pool.length) return;
+    hint(); hi = -1;
+    var n = pool.length, step = TAU / n;
+    var w = Math.floor(Math.random() * n), u = 0.15 + Math.random() * 0.7;
+    var target = -(w + u) * step;
+    var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var spins = reduce ? 0 : 5 + Math.floor(Math.random() * 3);
+    var delta = (((target - theta) % TAU) + TAU) % TAU + spins * TAU;
+    var th0 = theta, t0 = performance.now(), dur = reduce ? 600 : 5400;
+    lock(true);
+    function frame(now) {
+      var k = Math.min(1, (now - t0) / dur);
+      var e = 1 - Math.pow(1 - k, 4);
+      theta = th0 + delta * e;
+      var ix = idxAt(theta);
+      if (ix !== lastIdx) { lastIdx = ix; readout(pool[ix]); }
+      draw();
+      if (k < 1) { requestAnimationFrame(frame); return; }
+      theta = theta % TAU;
+      hi = w;
+      readout(pool[w]);
+      draw();
+      showResult(pool[w]);
+      lock(false);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  /* ---------- events ---------- */
+  document.addEventListener("click", function (e) {
+    var chip = e.target.closest(".chip");
+    if (chip && !spinning) {
+      var dim = chip.dataset.dim, k = chip.dataset.k;
+      if (dim === "cu") { st.cu.has(k) ? st.cu.delete(k) : st.cu.add(k); }
+      else if (dim === "bu") { var p = +k; st.bu.has(p) ? st.bu.delete(p) : st.bu.add(p); }
+      else if (dim === "ha") { st.ha = k; }
+      else if (dim === "ma") { st.ma = k; }
+      refresh();
+      return;
+    }
+    var sk = e.target.closest("#skip");
+    if (sk && !spinning) {
+      st.skip.add(+sk.dataset.id);
+      refresh();
+    }
+  });
+  SPIN.addEventListener("click", spin);
+  $("#reset").addEventListener("click", function () {
+    if (spinning) return;
+    st.cu.clear(); st.bu.clear(); st.ha = "any"; st.ma = "any"; st.skip.clear();
+    refresh();
+  });
+
+  build();
+  refresh();
+  fit();
+  if (window.ResizeObserver) new ResizeObserver(fit).observe(cv); else window.addEventListener("resize", fit);
+  var mq = window.matchMedia("(prefers-color-scheme: dark)");
+  if (mq.addEventListener) mq.addEventListener("change", draw);
+  new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw);
+})();
+</script>
+
+</body></html>
